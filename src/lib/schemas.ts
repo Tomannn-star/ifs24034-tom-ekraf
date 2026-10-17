@@ -38,3 +38,4 @@ export const userRoleSchema = z.object({
 });
 
 export type UserRoleInput = z.infer<typeof userRoleSchema>;
+

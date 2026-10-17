@@ -126,3 +126,4 @@ describe("userRoleSchema validation", () => {
 		expect(userRoleSchema.safeParse({ userId: "", role: "admin" }).success).toBe(false);
 	});
 });
+

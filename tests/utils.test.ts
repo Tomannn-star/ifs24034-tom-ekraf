@@ -14,3 +14,4 @@ describe("cn utility", () => {
 		expect(cn("", null, undefined, false)).toBe("");
 	});
 });
+
