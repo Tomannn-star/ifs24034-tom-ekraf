@@ -4,10 +4,9 @@ import { z } from "zod";
 import { db, getUserRole, removeUserRole, setUserRole } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 
-export const userRoleSchema = z.object({
-	userId: z.string(),
-	role: z.enum(["admin", "user"]),
-});
+import { type UserRoleInput, userRoleSchema } from "@/lib/schemas";
+
+export { type UserRoleInput, userRoleSchema };
 
 export const getUsers = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
