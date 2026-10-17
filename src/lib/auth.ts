@@ -5,8 +5,10 @@ import { adapter } from "./db";
 
 export const auth = betterAuth({
 	database: adapter,
-	secret: process.env.BETTER_AUTH_SECRET,
-	baseURL: process.env.BETTER_AUTH_URL,
+	secret:
+		process.env.BETTER_AUTH_SECRET ||
+		"ekraf_better_auth_secret_30a8d497903136f8a74c55125b6d1c2a6fda53308cfba9aa",
+	baseURL: process.env.BETTER_AUTH_URL || "https://ifs24034-tom-ekraf.vercel.app",
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: false,
