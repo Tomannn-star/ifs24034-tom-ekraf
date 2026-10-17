@@ -1,15 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute, redirect, useNavigate, useParams } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import {
-	ArrowLeft,
-	CheckCircle2,
-	ShieldAlert,
-	ShieldCheck,
-	Trash2,
-	User,
-	XCircle,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle2, ShieldAlert, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { DashboardShell } from "@/components/DashboardShell";
@@ -23,7 +15,7 @@ export const Route = createFileRoute("/users/$userId")({
 	beforeLoad: async () => {
 		const { session } = await getServerSession();
 		if (!session) {
-			return redirect({ to: "/login" }) as any;
+			throw redirect({ to: "/login" });
 		}
 	},
 	component: UserDetailPage,

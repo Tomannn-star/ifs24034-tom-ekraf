@@ -43,7 +43,7 @@ function Slider({
 					)}
 				/>
 			</SliderPrimitive.Track>
-			{_values.map((val, index) => (
+			{_values.map((_, index) => (
 				<SliderPrimitive.Thumb
 					data-slot="slider-thumb"
 					// biome-ignore lint/suspicious/noArrayIndexKey: slider thumbs correspond to value array indices

@@ -20,19 +20,20 @@ export const getServerSession = createServerFn({ method: "GET" }).handler(async 
  * Called from the client via `useServerFn(seedAdmin)` on the /setup page.
  */
 export const seedAdmin = createServerFn({ method: "POST" }).handler(async () => {
-	let adminUser = db.user.find((u) => u.email === SEED_ADMIN_EMAIL);
+	const adminUser = db.user.find((u) => u.email === SEED_ADMIN_EMAIL);
 	const hasAdminRole = db.user.some((u) => {
 		const role = db.userRole.find((r) => r.userId === u.id)?.role;
 		return role === "admin";
 	});
 
 	if (adminUser || hasAdminRole) {
-		if (adminUser) {
-			const existing = db.userRole.find((r) => r.userId === adminUser.id);
-			if (existing) {
-				existing.role = "admin";
+		const existingAdmin = adminUser;
+		if (existingAdmin) {
+			const existingRole = db.userRole.find((r) => r.userId === existingAdmin.id);
+			if (existingRole) {
+				existingRole.role = "admin";
 			} else {
-				db.userRole.push({ userId: adminUser.id, role: "admin" });
+				db.userRole.push({ userId: existingAdmin.id, role: "admin" });
 			}
 		}
 		if (db.product.length === 0) {
@@ -54,13 +55,13 @@ export const seedAdmin = createServerFn({ method: "POST" }).handler(async () => 
 		// Better auth might already have user
 	}
 
-	adminUser = db.user.find((u) => u.email === SEED_ADMIN_EMAIL);
-	if (adminUser) {
-		const existing = db.userRole.find((r) => r.userId === adminUser.id);
-		if (existing) {
-			existing.role = "admin";
+	const createdAdmin = db.user.find((u) => u.email === SEED_ADMIN_EMAIL);
+	if (createdAdmin) {
+		const existingRole = db.userRole.find((r) => r.userId === createdAdmin.id);
+		if (existingRole) {
+			existingRole.role = "admin";
 		} else {
-			db.userRole.push({ userId: adminUser.id, role: "admin" });
+			db.userRole.push({ userId: createdAdmin.id, role: "admin" });
 		}
 	}
 

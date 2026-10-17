@@ -1,7 +1,7 @@
 import { getRequest } from "@tanstack/react-start/server";
 
 import { auth } from "./auth";
-import { type Role, getUserRole } from "./db";
+import { type Role, SEED_ADMIN_EMAIL, getUserRole, setUserRole } from "./db";
 
 /**
  * Read the current better-auth session from the incoming request.

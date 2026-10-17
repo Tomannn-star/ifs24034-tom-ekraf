@@ -37,7 +37,7 @@ export const Route = createFileRoute("/users/")({
 	beforeLoad: async () => {
 		const { session } = await getServerSession();
 		if (!session) {
-			return redirect({ to: "/login" }) as any;
+			throw redirect({ to: "/login" });
 		}
 	},
 	component: UsersPage,
