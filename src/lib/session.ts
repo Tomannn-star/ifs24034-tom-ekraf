@@ -33,6 +33,10 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
 	const { user, session } = await requireAuth();
+	if (user.email === SEED_ADMIN_EMAIL) {
+		setUserRole(user.id, "admin");
+		return { user, session };
+	}
 	const role: Role = getUserRole(user.id);
 	if (role !== "admin") {
 		const err = new Error("Forbidden: admin required") as Error & {

@@ -55,6 +55,10 @@ export const SEED_ADMIN_EMAIL = "admin@example.com";
 export const SEED_ADMIN_PASSWORD = "admin12345";
 
 export function getUserRole(userId: string): Role {
+	const user = db.user.find((u) => u.id === userId);
+	if (user?.email === SEED_ADMIN_EMAIL) {
+		return "admin";
+	}
 	return db.userRole.find((r) => r.userId === userId)?.role ?? "user";
 }
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ProductFormModal } from "@/components/ProductFormModal";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 import { getServerSession } from "@/lib/server/auth";
 import { getProducts } from "@/lib/server/products";
 import { getUsers } from "@/lib/server/users";
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
 	const [createModalOpen, setCreateModalOpen] = useState(false);
+	const { data: session } = authClient.useSession();
+	const isAdmin = session?.user?.email === "admin@example.com";
 
 	const productsQuery = useQuery({
 		queryKey: ["dashboard", "products"],
@@ -30,12 +33,14 @@ function Dashboard() {
 	const usersQuery = useQuery({
 		queryKey: ["dashboard", "users"],
 		queryFn: async () => getUsers(),
+		enabled: isAdmin,
+		retry: false,
 	});
 
 	const products = productsQuery.data ?? [];
 	const users = usersQuery.data ?? [];
 	const adminCount = users.filter((u) => u.role === "admin").length;
-	const isPending = productsQuery.isPending || usersQuery.isPending;
+	const isPending = productsQuery.isPending || (isAdmin && usersQuery.isPending);
 
 	return (
 		<DashboardShell
@@ -54,14 +59,16 @@ function Dashboard() {
 			}
 		>
 			{/* Error Banners */}
-			{(productsQuery.isError || usersQuery.isError) && (
+			{(productsQuery.isError || (isAdmin && usersQuery.isError)) && (
 				<div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
 					<AlertCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
 					<div>
 						{productsQuery.isError && (
 							<p>Products error: {(productsQuery.error as Error).message}</p>
 						)}
-						{usersQuery.isError && <p>Users error: {(usersQuery.error as Error).message}</p>}
+						{isAdmin && usersQuery.isError && (
+							<p>Users error: {(usersQuery.error as Error).message}</p>
+						)}
 					</div>
 				</div>
 			)}
@@ -77,15 +84,15 @@ function Dashboard() {
 				/>
 				<StatCard
 					title="Registered Users"
-					value={isPending ? "..." : users.length}
-					subtitle="Accounts in memory"
+					value={!isAdmin ? "Admin Only" : isPending ? "..." : users.length}
+					subtitle={!isAdmin ? "Requires Administrator role" : "Accounts in memory"}
 					icon={Users}
 					color="text-sky-600 dark:text-sky-400"
 				/>
 				<StatCard
 					title="Administrators"
-					value={isPending ? "..." : adminCount}
-					subtitle="Privileged role holders"
+					value={!isAdmin ? "Admin Only" : isPending ? "..." : adminCount}
+					subtitle={!isAdmin ? "Requires Administrator role" : "Privileged role holders"}
 					icon={ShieldCheck}
 					color="text-emerald-600 dark:text-emerald-400"
 				/>
