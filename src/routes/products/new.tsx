@@ -1,36 +1,33 @@
 import { useForm } from "@tanstack/react-form";
 import { Link, createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useState } from "react";
 
+import { DashboardShell } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { getServerSession } from "@/lib/server/auth";
 import { createProduct } from "@/lib/server/products";
-
-type FormData = {
-	name: string;
-	description: string;
-	price: string;
-	stock: string;
-};
 
 export const Route = createFileRoute("/products/new")({
 	beforeLoad: async () => {
 		const { session } = await getServerSession();
 		if (!session) {
-			return redirect({ to: "/demo/better-auth" }) as any;
+			return redirect({ to: "/login" }) as any;
 		}
 	},
-	component: NewProduct,
+	component: NewProductPage,
 });
 
-function NewProduct() {
+function NewProductPage() {
 	const navigate = useNavigate();
 	const createFn = useServerFn(createProduct);
-	const [message, setMessage] = useState("");
-	const [messageType, setMessageType] = useState<"success" | "error">("success");
+	const [serverError, setServerError] = useState<string | null>(null);
+	const [imagePreview, setImagePreview] = useState<string | null>(null);
+	const [imageError, setImageError] = useState<string | null>(null);
 
 	const form = useForm({
 		defaultValues: {
@@ -38,72 +35,83 @@ function NewProduct() {
 			description: "",
 			price: "",
 			stock: "",
-		} as FormData,
+			imageUrl: "",
+		},
 		onSubmit: async ({ value }) => {
-			setMessage("");
-			if (!value.name || !value.description) {
-				setMessageType("error");
-				setMessage("Name and description are required.");
+			setServerError(null);
+			if (imageError) return;
+
+			const numPrice = Number(value.price);
+			const numStock = Number(value.stock);
+
+			if (Number.isNaN(numPrice) || numPrice < 0) {
+				setServerError("Price must be a valid positive number.");
 				return;
 			}
-			const price = Number(value.price);
-			const stock = Number(value.stock);
-			if (!Number.isFinite(price) || price < 0) {
-				setMessageType("error");
-				setMessage("Price must be a valid positive number.");
+			if (Number.isNaN(numStock) || numStock < 0) {
+				setServerError("Stock must be a valid positive integer.");
 				return;
 			}
-			if (!Number.isFinite(stock) || stock < 0) {
-				setMessageType("error");
-				setMessage("Stock must be a valid positive number.");
-				return;
-			}
+
 			try {
 				await createFn({
 					data: {
-						name: value.name,
-						description: value.description,
-						price,
-						stock,
+						name: value.name.trim(),
+						description: value.description.trim(),
+						price: numPrice,
+						stock: Math.floor(numStock),
+						imageUrl: imagePreview || null,
 					},
 				});
-				setMessageType("success");
-				setMessage("Product created successfully.");
-				navigate({ to: "/products" });
+				await navigate({ to: "/products" });
 			} catch (err) {
-				setMessageType("error");
-				setMessage(err instanceof Error ? err.message : "Create failed");
+				setServerError(err instanceof Error ? err.message : "Failed to create product.");
 			}
 		},
 	});
 
-	const errorsFor = (name: keyof FormData) => form.getFieldMeta(name)?.errors ?? [];
+	const validateImageUrl = (url: string) => {
+		setImageError(null);
+		if (!url) {
+			setImagePreview(null);
+			return;
+		}
+		const img = new Image();
+		img.onload = () => {
+			if (img.width > 512 || img.height > 512) {
+				setImageError(
+					`Image (${img.width}x${img.height}px) exceeds max dimension limit of 512x512px.`,
+				);
+			} else {
+				setImagePreview(url);
+			}
+		};
+		img.onerror = () => {
+			setImageError("Unable to load image from URL.");
+			setImagePreview(null);
+		};
+		img.src = url;
+	};
 
 	return (
-		<main className="page-wrap px-4 py-12">
-			<section className="island-shell rounded-2xl p-6 sm:p-8">
-				<div className="flex items-center gap-3 mb-6">
+		<DashboardShell
+			title="Create Product"
+			description="Add a new catalog item with pricing, inventory and image."
+		>
+			<div className="max-w-2xl">
+				<div className="mb-4">
 					<Link
 						to="/products"
-						className="text-xs text-[var(--sea-ink-soft)] underline underline-offset-4 hover:text-[var(--sea-ink)]"
+						className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
 					>
-						&larr; Back to products
+						<ArrowLeft className="size-3.5" /> Back to Products
 					</Link>
-					<h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
-						Add Product
-					</h1>
 				</div>
 
-				<>
-					{message && (
-						<div
-							className={`mb-5 p-4 rounded-xl border ${
-								messageType === "success"
-									? "bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400"
-									: "bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400"
-							}`}
-						>
-							{message}
+				<div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-6 shadow-sm sm:p-8">
+					{serverError && (
+						<div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+							{serverError}
 						</div>
 					)}
 
@@ -113,75 +121,210 @@ function NewProduct() {
 							e.stopPropagation();
 							form.handleSubmit();
 						}}
-						className="space-y-5"
+						className="space-y-4"
 					>
-						<div className="space-y-2">
-							<Label htmlFor="name">Name</Label>
-							<Input
-								id="name"
-								value={form.getFieldValue("name")}
-								onChange={(e) => form.setFieldValue("name", e.target.value)}
-								placeholder="e.g. Starter Kit"
-								className="w-full"
-							/>
-							{errorsFor("name").length > 0 && (
-								<p className="text-xs text-red-600">{errorsFor("name").join(", ")}</p>
+						<form.Field
+							name="name"
+							validators={{
+								onChange: ({ value }) => (!value.trim() ? "Name is required" : undefined),
+							}}
+						>
+							{(field) => (
+								<div className="space-y-1.5">
+									<Label
+										htmlFor={field.name}
+										className="text-xs font-semibold text-[var(--sea-ink)]"
+									>
+										Product Name *
+									</Label>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="e.g. Ergonomic Desk Chair"
+										className="w-full"
+									/>
+									{field.state.meta.errors.length > 0 && (
+										<p className="text-xs text-red-600 font-medium">
+											{field.state.meta.errors.join(", ")}
+										</p>
+									)}
+								</div>
 							)}
-						</div>
+						</form.Field>
 
-						<div className="space-y-2">
-							<Label htmlFor="description">Description</Label>
-							<Input
-								id="description"
-								value={form.getFieldValue("description")}
-								onChange={(e) => form.setFieldValue("description", e.target.value)}
-								placeholder="e.g. Everything you need to begin."
-								className="w-full"
-							/>
-							{errorsFor("description").length > 0 && (
-								<p className="text-xs text-red-600">{errorsFor("description").join(", ")}</p>
+						<form.Field
+							name="description"
+							validators={{
+								onChange: ({ value }) => (!value.trim() ? "Description is required" : undefined),
+							}}
+						>
+							{(field) => (
+								<div className="space-y-1.5">
+									<Label
+										htmlFor={field.name}
+										className="text-xs font-semibold text-[var(--sea-ink)]"
+									>
+										Description *
+									</Label>
+									<Textarea
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="Describe the product specifications..."
+										rows={3}
+										className="w-full"
+									/>
+									{field.state.meta.errors.length > 0 && (
+										<p className="text-xs text-red-600 font-medium">
+											{field.state.meta.errors.join(", ")}
+										</p>
+									)}
+								</div>
 							)}
+						</form.Field>
+
+						<div className="grid grid-cols-2 gap-4">
+							<form.Field
+								name="price"
+								validators={{
+									onChange: ({ value }) => {
+										if (!value) return "Price is required";
+										const n = Number(value);
+										if (Number.isNaN(n) || n < 0) return "Must be positive";
+										return undefined;
+									},
+								}}
+							>
+								{(field) => (
+									<div className="space-y-1.5">
+										<Label
+											htmlFor={field.name}
+											className="text-xs font-semibold text-[var(--sea-ink)]"
+										>
+											Price ($) *
+										</Label>
+										<Input
+											id={field.name}
+											name={field.name}
+											type="number"
+											step="0.01"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											placeholder="99.00"
+											className="w-full"
+										/>
+										{field.state.meta.errors.length > 0 && (
+											<p className="text-xs text-red-600 font-medium">
+												{field.state.meta.errors.join(", ")}
+											</p>
+										)}
+									</div>
+								)}
+							</form.Field>
+
+							<form.Field
+								name="stock"
+								validators={{
+									onChange: ({ value }) => {
+										if (!value) return "Stock is required";
+										const n = Number(value);
+										if (Number.isNaN(n) || n < 0) return "Must be positive";
+										return undefined;
+									},
+								}}
+							>
+								{(field) => (
+									<div className="space-y-1.5">
+										<Label
+											htmlFor={field.name}
+											className="text-xs font-semibold text-[var(--sea-ink)]"
+										>
+											Stock Count *
+										</Label>
+										<Input
+											id={field.name}
+											name={field.name}
+											type="number"
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											placeholder="25"
+											className="w-full"
+										/>
+										{field.state.meta.errors.length > 0 && (
+											<p className="text-xs text-red-600 font-medium">
+												{field.state.meta.errors.join(", ")}
+											</p>
+										)}
+									</div>
+								)}
+							</form.Field>
 						</div>
 
-						<div className="grid gap-4 sm:grid-cols-2">
-							<div className="space-y-2">
-								<Label htmlFor="price">Price</Label>
-								<Input
-									id="price"
-									type="number"
-									value={form.getFieldValue("price")}
-									onChange={(e) => form.setFieldValue("price", e.target.value)}
-									placeholder="0.00"
-									className="w-full"
-								/>
-								{errorsFor("price").length > 0 && (
-									<p className="text-xs text-red-600">{errorsFor("price").join(", ")}</p>
-								)}
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="stock">Stock</Label>
-								<Input
-									id="stock"
-									type="number"
-									value={form.getFieldValue("stock")}
-									onChange={(e) => form.setFieldValue("stock", e.target.value)}
-									placeholder="0"
-									className="w-full"
-								/>
-								{errorsFor("stock").length > 0 && (
-									<p className="text-xs text-red-600">{errorsFor("stock").join(", ")}</p>
-								)}
-							</div>
-						</div>
+						<form.Field name="imageUrl">
+							{(field) => (
+								<div className="space-y-1.5 rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] p-3">
+									<Label
+										htmlFor={field.name}
+										className="text-xs font-semibold text-[var(--sea-ink)] flex items-center gap-1.5"
+									>
+										<ImageIcon className="size-3.5" /> Image URL (Max 512px)
+									</Label>
+									<Input
+										id={field.name}
+										name={field.name}
+										type="url"
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => {
+											field.handleChange(e.target.value);
+											validateImageUrl(e.target.value.trim());
+										}}
+										placeholder="https://images.unsplash.com/photo-..."
+										className="w-full text-xs"
+									/>
+									{imageError && <p className="text-xs text-red-600 font-medium">{imageError}</p>}
+									{imagePreview && (
+										<div className="mt-2 flex items-center justify-center p-2 rounded border border-[var(--line)] bg-surface">
+											<img
+												src={imagePreview}
+												alt="Preview"
+												className="max-h-32 object-contain rounded"
+											/>
+										</div>
+									)}
+								</div>
+							)}
+						</form.Field>
 
-						<div className="pt-4 flex justify-end">
-							<Button type="submit" disabled={form.state.isSubmitting} className="w-full sm:w-auto">
-								{form.state.isSubmitting ? "Creating..." : "Create Product"}
+						<div className="flex justify-end gap-2 pt-4">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => navigate({ to: "/products" })}
+								disabled={form.state.isSubmitting}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={form.state.isSubmitting || Boolean(imageError)}>
+								{form.state.isSubmitting ? (
+									<>
+										<Loader2 className="mr-1.5 size-4 animate-spin" /> Creating...
+									</>
+								) : (
+									"Create Product"
+								)}
 							</Button>
 						</div>
 					</form>
-				</>
-			</section>
-		</main>
+				</div>
+			</div>
+		</DashboardShell>
 	);
 }

@@ -5,10 +5,33 @@ import { type Product, db } from "@/lib/db";
 import { requireAdmin, requireAuth } from "@/lib/session";
 
 export const productSchema = z.object({
-	name: z.string().min(1, "Name is required"),
-	description: z.string().min(1, "Description is required"),
-	price: z.coerce.number().min(0, "Price must be positive"),
-	stock: z.coerce.number().min(0, "Stock must be positive"),
+	name: z.string().trim().min(1, "Name is required").max(120, "Name cannot exceed 120 characters"),
+	description: z
+		.string()
+		.trim()
+		.min(1, "Description is required")
+		.max(1000, "Description cannot exceed 1000 characters"),
+	price: z.coerce.number().min(0, "Price must be positive").max(1_000_000, "Price is too high"),
+	stock: z.coerce
+		.number()
+		.int("Stock must be an integer")
+		.min(0, "Stock must be positive")
+		.max(1_000_000, "Stock is too high"),
+	imageUrl: z
+		.string()
+		.trim()
+		.max(500_000, "Image URL or data is too large")
+		.refine(
+			(val) => {
+				if (!val) return true;
+				return (
+					val.startsWith("http://") || val.startsWith("https://") || val.startsWith("data:image/")
+				);
+			},
+			{ message: "Image must be an HTTP/HTTPS URL or an image data URI" },
+		)
+		.optional()
+		.nullable(),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;
@@ -27,7 +50,11 @@ export const createProduct = createServerFn({ method: "POST" })
 		const now = new Date().toISOString();
 		const product = {
 			id: crypto.randomUUID(),
-			...data,
+			name: data.name,
+			description: data.description,
+			price: data.price,
+			stock: data.stock,
+			imageUrl: data.imageUrl ?? null,
 			createdAt: now,
 			updatedAt: now,
 		} as Product;
@@ -38,7 +65,7 @@ export const createProduct = createServerFn({ method: "POST" })
 export const updateProduct = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
-			id: z.string(),
+			id: z.string().min(1, "ID is required"),
 			...productSchema.shape,
 		}),
 	)
@@ -57,6 +84,7 @@ export const updateProduct = createServerFn({ method: "POST" })
 			description: data.description,
 			price: data.price,
 			stock: data.stock,
+			imageUrl: data.imageUrl ?? null,
 			updatedAt: now,
 		} as Product;
 		db.product[index] = updated;

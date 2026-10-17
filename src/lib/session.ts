@@ -32,7 +32,7 @@ export async function requireAuth() {
 }
 
 export async function requireAdmin() {
-	const { user } = await requireAuth();
+	const { user, session } = await requireAuth();
 	const role: Role = getUserRole(user.id);
 	if (role !== "admin") {
 		const err = new Error("Forbidden: admin required") as Error & {
@@ -41,5 +41,5 @@ export async function requireAdmin() {
 		err.status = 403;
 		throw err;
 	}
-	return { user };
+	return { user, session };
 }

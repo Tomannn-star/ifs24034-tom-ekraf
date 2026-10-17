@@ -17,6 +17,18 @@ export const auth = betterAuth({
 			maxAge: 60 * 15,
 		},
 	},
+	rateLimit: {
+		enabled: true,
+		window: 60,
+		max: 10,
+	},
+	advanced: {
+		defaultCookieAttributes: {
+			httpOnly: true,
+			sameSite: "lax",
+			secure: process.env.NODE_ENV === "production",
+		},
+	},
 	plugins: [tanstackStartCookies()],
 });
 

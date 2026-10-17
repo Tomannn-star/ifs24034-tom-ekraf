@@ -43,10 +43,11 @@ function Slider({
 					)}
 				/>
 			</SliderPrimitive.Track>
-			{Array.from({ length: _values.length }, (_, index) => (
+			{_values.map((val, index) => (
 				<SliderPrimitive.Thumb
 					data-slot="slider-thumb"
-					key={index}
+					// biome-ignore lint/suspicious/noArrayIndexKey: slider thumbs correspond to value array indices
+					key={`thumb-${index}`}
 					className="block size-4 shrink-0 rounded-full border border-primary bg-white shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 				/>
 			))}

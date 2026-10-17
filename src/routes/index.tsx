@@ -46,7 +46,7 @@ function Home() {
 				) : (
 					<div className="mt-8 flex flex-wrap gap-4">
 						<Link
-							to="/demo/better-auth"
+							to="/login"
 							className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3 text-sm font-semibold text-[var(--sea-ink)] no-underline transition hover:bg-[var(--link-bg-hover)]"
 						>
 							Sign in / Sign up

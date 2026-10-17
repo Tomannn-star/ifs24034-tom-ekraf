@@ -24,15 +24,35 @@ export const getUsers = createServerFn({ method: "GET" }).handler(async () => {
 export const updateUserRole = createServerFn({ method: "POST" })
 	.validator(userRoleSchema)
 	.handler(async ({ data }) => {
-		await requireAdmin();
+		const { user } = await requireAdmin();
+		// Block self-role-demotion for admins
+		if (user.id === data.userId && data.role !== "admin") {
+			const err = new Error(
+				"Security violation: Administrators cannot demote their own account",
+			) as Error & {
+				status?: number;
+			};
+			err.status = 400;
+			throw err;
+		}
 		setUserRole(data.userId, data.role);
 		return { ok: true };
 	});
 
 export const deleteUser = createServerFn({ method: "POST" })
-	.validator(z.object({ userId: z.string() }))
+	.validator(z.object({ userId: z.string().min(1, "User ID is required") }))
 	.handler(async ({ data }) => {
-		await requireAdmin();
+		const { user } = await requireAdmin();
+		// Block self-deletion for admins
+		if (user.id === data.userId) {
+			const err = new Error(
+				"Security violation: Administrators cannot delete their own account",
+			) as Error & {
+				status?: number;
+			};
+			err.status = 400;
+			throw err;
+		}
 		// Prevent removing the last administrator so the app never locks itself out.
 		const role = getUserRole(data.userId);
 		if (role === "admin") {

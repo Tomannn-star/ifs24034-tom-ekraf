@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, redirect } from "@tanstack/react-router";
+import { AlertCircle, ArrowRight, Database, Package, Plus, ShieldCheck, Users } from "lucide-react";
+import { useState } from "react";
 
+import { DashboardShell } from "@/components/DashboardShell";
+import { ProductFormModal } from "@/components/ProductFormModal";
+import { Button } from "@/components/ui/button";
 import { getServerSession } from "@/lib/server/auth";
 import { getProducts } from "@/lib/server/products";
 import { getUsers } from "@/lib/server/users";
@@ -9,13 +14,15 @@ export const Route = createFileRoute("/dashboard")({
 	beforeLoad: async () => {
 		const { session } = await getServerSession();
 		if (!session) {
-			return redirect({ to: "/demo/better-auth" }) as any;
+			return redirect({ to: "/login" }) as any;
 		}
 	},
 	component: Dashboard,
 });
 
 function Dashboard() {
+	const [createModalOpen, setCreateModalOpen] = useState(false);
+
 	const productsQuery = useQuery({
 		queryKey: ["dashboard", "products"],
 		queryFn: async () => getProducts(),
@@ -28,85 +35,182 @@ function Dashboard() {
 	const products = productsQuery.data ?? [];
 	const users = usersQuery.data ?? [];
 	const adminCount = users.filter((u) => u.role === "admin").length;
+	const isPending = productsQuery.isPending || usersQuery.isPending;
 
 	return (
-		<main className="page-wrap px-4 py-12">
-			<section className="island-shell rounded-2xl p-6 sm:p-8">
-				<div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+		<DashboardShell
+			title="Dashboard Overview"
+			description="Real-time administration metrics, products inventory, and user privileges."
+			actions={
+				<div className="flex items-center gap-2">
+					<Button
+						onClick={() => setCreateModalOpen(true)}
+						size="sm"
+						className="gap-1.5 font-medium shadow-sm"
+					>
+						<Plus className="size-4" /> Add Product
+					</Button>
+				</div>
+			}
+		>
+			{/* Error Banners */}
+			{(productsQuery.isError || usersQuery.isError) && (
+				<div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+					<AlertCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
 					<div>
-						<p className="island-kicker mb-2">Dashboard</p>
-						<h1 className="display-title mb-1 text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
-							Overview
-						</h1>
-						<p className="m-0 text-[var(--sea-ink-soft)]">
-							Secure admin area. All writes are validated server-side.
-						</p>
+						{productsQuery.isError && (
+							<p>Products error: {(productsQuery.error as Error).message}</p>
+						)}
+						{usersQuery.isError && <p>Users error: {(usersQuery.error as Error).message}</p>}
+					</div>
+				</div>
+			)}
+
+			{/* Metric Stat Cards */}
+			<div className="grid gap-4 sm:grid-cols-3">
+				<StatCard
+					title="Active Products"
+					value={isPending ? "..." : products.length}
+					subtitle="Total catalog items"
+					icon={Package}
+					color="text-teal-600 dark:text-teal-400"
+				/>
+				<StatCard
+					title="Registered Users"
+					value={isPending ? "..." : users.length}
+					subtitle="Accounts in memory"
+					icon={Users}
+					color="text-sky-600 dark:text-sky-400"
+				/>
+				<StatCard
+					title="Administrators"
+					value={isPending ? "..." : adminCount}
+					subtitle="Privileged role holders"
+					icon={ShieldCheck}
+					color="text-emerald-600 dark:text-emerald-400"
+				/>
+			</div>
+
+			{/* Feature Cards Grid */}
+			<div className="grid gap-5 md:grid-cols-2">
+				<div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-6 shadow-sm transition hover:shadow-md">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-3">
+							<div className="flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400">
+								<Package className="size-5" />
+							</div>
+							<div>
+								<h2 className="text-base font-bold text-[var(--sea-ink)]">Product Management</h2>
+								<p className="text-xs text-[var(--sea-ink-soft)]">
+									View, search, create, update, or remove catalog items.
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<div className="mt-5 space-y-2 border-t border-[var(--line)] pt-4 text-xs text-[var(--sea-ink-soft)]">
+						<div className="flex items-center justify-between">
+							<span>Sample Inventory:</span>
+							<span className="font-semibold text-[var(--sea-ink)]">{products.length} items</span>
+						</div>
+						<div className="flex items-center justify-between">
+							<span>Image Limit:</span>
+							<span className="font-semibold text-[var(--sea-ink)]">Max 512px client & server</span>
+						</div>
+					</div>
+
+					<div className="mt-5 flex items-center justify-between pt-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setCreateModalOpen(true)}
+							className="gap-1.5 text-xs"
+						>
+							<Plus className="size-3.5" /> Quick Add
+						</Button>
+						<Link
+							to="/products"
+							className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--sea-ink)] hover:underline"
+						>
+							Explore products <ArrowRight className="size-3.5" />
+						</Link>
 					</div>
 				</div>
 
-				<div className="grid gap-4 sm:grid-cols-3">
-					<StatCard title="Products" value={products.length} />
-					<StatCard title="Users" value={users.length} />
-					<StatCard title="Administrators" value={adminCount} />
-				</div>
+				<div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-6 shadow-sm transition hover:shadow-md">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-3">
+							<div className="flex size-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400">
+								<Users className="size-5" />
+							</div>
+							<div>
+								<h2 className="text-base font-bold text-[var(--sea-ink)]">User Administration</h2>
+								<p className="text-xs text-[var(--sea-ink-soft)]">
+									Manage member accounts, permissions, and administrator roles.
+								</p>
+							</div>
+						</div>
+					</div>
 
-				<div className="mt-8 grid gap-4 sm:grid-cols-2">
-					<Card title="Products" subtitle="View, create, edit, and delete products.">
+					<div className="mt-5 space-y-2 border-t border-[var(--line)] pt-4 text-xs text-[var(--sea-ink-soft)]">
+						<div className="flex items-center justify-between">
+							<span>Security Safeguard:</span>
+							<span className="font-semibold text-[var(--sea-ink)]">Self-demotion blocked</span>
+						</div>
+						<div className="flex items-center justify-between">
+							<span>Last-Admin Protection:</span>
+							<span className="font-semibold text-[var(--sea-ink)]">Active (Lockout proof)</span>
+						</div>
+					</div>
+
+					<div className="mt-5 flex items-center justify-between pt-2">
 						<Link
-							to="/products"
-							className="text-[var(--sea-ink)] font-medium underline underline-offset-4 hover:text-[var(--sea-ink)]"
+							to="/setup"
+							className="inline-flex items-center gap-1.5 text-xs text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
 						>
-							Manage products &rarr;
+							<Database className="size-3.5" /> Seed / Reset
 						</Link>
-					</Card>
-					<Card title="Users" subtitle="Manage user accounts and roles (admin only).">
 						<Link
 							to="/users"
-							className="text-[var(--sea-ink)] font-medium underline underline-offset-4 hover:text-[var(--sea-ink)]"
+							className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--sea-ink)] hover:underline"
 						>
-							Manage users &rarr;
+							Manage users <ArrowRight className="size-3.5" />
 						</Link>
-					</Card>
+					</div>
 				</div>
+			</div>
 
-				{productsQuery.isError && (
-					<p className="mt-4 text-sm text-red-600">
-						Failed to load products: {(productsQuery.error as Error).message}
-					</p>
-				)}
-				{usersQuery.isError && (
-					<p className="mt-4 text-sm text-red-600">
-						Failed to load users: {(usersQuery.error as Error).message}
-					</p>
-				)}
-			</section>
-		</main>
+			{/* Product Modal */}
+			<ProductFormModal
+				open={createModalOpen}
+				onOpenChange={setCreateModalOpen}
+				onSuccess={() => productsQuery.refetch()}
+			/>
+		</DashboardShell>
 	);
 }
 
-function StatCard({ title, value }: { title: string; value: number }) {
-	return (
-		<div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] p-5">
-			<p className="m-0 text-sm text-[var(--sea-ink-soft)]">{title}</p>
-			<p className="m-0 mt-1 text-3xl font-bold text-[var(--sea-ink)]">{value}</p>
-		</div>
-	);
-}
-
-function Card({
+function StatCard({
 	title,
+	value,
 	subtitle,
-	children,
+	icon: Icon,
+	color,
 }: {
 	title: string;
+	value: string | number;
 	subtitle: string;
-	children: React.ReactNode;
+	icon: React.ComponentType<{ className?: string }>;
+	color: string;
 }) {
 	return (
-		<div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] p-5">
-			<p className="m-0 text-sm text-[var(--sea-ink-soft)]">{title}</p>
-			<p className="m-0 mt-1 text-xs text-[var(--sea-ink-soft)]">{subtitle}</p>
-			<div className="mt-4">{children}</div>
+		<div className="rounded-2xl border border-[var(--line)] bg-[var(--surface-strong)] p-5 shadow-sm">
+			<div className="flex items-center justify-between">
+				<p className="text-xs font-medium text-[var(--sea-ink-soft)]">{title}</p>
+				<Icon className={`size-4.5 ${color}`} />
+			</div>
+			<p className="mt-2 text-3xl font-bold tracking-tight text-[var(--sea-ink)]">{value}</p>
+			<p className="mt-1 text-xs text-[var(--sea-ink-soft)]">{subtitle}</p>
 		</div>
 	);
 }
