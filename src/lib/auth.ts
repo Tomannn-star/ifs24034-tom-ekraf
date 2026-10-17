@@ -5,6 +5,8 @@ import { adapter } from "./db";
 
 export const auth = betterAuth({
 	database: adapter,
+	secret: process.env.BETTER_AUTH_SECRET,
+	baseURL: process.env.BETTER_AUTH_URL,
 	emailAndPassword: {
 		enabled: true,
 		requireEmailVerification: false,
